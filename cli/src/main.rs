@@ -1,5 +1,5 @@
-use unrot_core::find_broken_symlinks;
 use std::path::PathBuf;
+use unrot_core::find_broken_symlinks;
 
 fn main() {
     // FIXME: Result instead
