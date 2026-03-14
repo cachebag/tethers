@@ -1,6 +1,8 @@
-use std::path::Path;
+use std::fmt;
+use std::fs;
+use std::path::{Path, PathBuf};
 
-pub fn find_broken_symlinks(path: &Path) -> Vec<String> {
+pub fn find_broken_symlinks(path: &Path) -> Vec<BrokenSymlink> {
     let output = std::process::Command::new("find")
         .arg(path)
         .args(["-type", "l"])
@@ -10,5 +12,23 @@ pub fn find_broken_symlinks(path: &Path) -> Vec<String> {
 
     let stdout = String::from_utf8_lossy(&output.stdout);
 
-    stdout.lines().map(|s| s.to_string()).collect()
+    stdout
+        .lines()
+        .filter_map(|line| {
+            let link = PathBuf::from(line);
+            let target = fs::read_link(&link).ok()?;
+            Some(BrokenSymlink { link, target })
+        })
+        .collect()
+}
+
+pub struct BrokenSymlink {
+    pub link: PathBuf,
+    pub target: PathBuf,
+}
+
+impl fmt::Display for BrokenSymlink {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} -> {}", self.link.display(), self.target.display())
+    }
 }
