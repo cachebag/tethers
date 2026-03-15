@@ -22,38 +22,31 @@ pub fn find_broken_symlinks(path: &Path, ignore: &[String]) -> Vec<BrokenSymlink
             }
         })
     {
-        match entry {
-            Ok(dir_entry) => {
-                let file_type = dir_entry.file_type();
-                if file_type.is_symlink() {
-                    let link_path = dir_entry.path().to_path_buf();
-                    match fs::read_link(&link_path) {
-                        Ok(target_path) => {
-                            // This resolves relative targets against the symlinks parent
-                            let resolved: PathBuf = if target_path.is_relative() {
-                                link_path
-                                    .parent()
-                                    .unwrap_or(Path::new("."))
-                                    .join(&target_path)
-                            } else {
-                                target_path.clone()
-                            };
-                            if !resolved.exists() {
-                                broken_symlinks.push(BrokenSymlink {
-                                    link: link_path,
-                                    target: target_path,
-                                });
-                            }
-                        }
-                        Err(_) => {
-                            // An unreadable link isn't really actionable
-                            // So we can just continue
-                            continue;
-                        }
-                    }
-                }
-            }
-            Err(_) => continue,
+        let Ok(dir_entry) = entry else {
+            continue;
+        };
+        let file_type = dir_entry.file_type();
+        if !file_type.is_symlink() {
+            continue;
+        }
+        let link_path = dir_entry.path().to_path_buf();
+        let Ok(target_path) = fs::read_link(&link_path) else {
+            continue;
+        };
+        // This resolves relative targets against the symlinks parent
+        let resolved: PathBuf = if target_path.is_relative() {
+            link_path
+                .parent()
+                .unwrap_or(Path::new("."))
+                .join(&target_path)
+        } else {
+            target_path.clone()
+        };
+        if !resolved.exists() {
+            broken_symlinks.push(BrokenSymlink {
+                link: link_path,
+                target: target_path,
+            });
         }
     }
 
